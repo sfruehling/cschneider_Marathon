@@ -1,4 +1,4 @@
-name: Workflow Scanname: Workflow Scan
+name: Workflow Scan
 
 on:
   workflow_dispatch:

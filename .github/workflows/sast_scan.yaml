@@ -120,7 +120,8 @@ jobs:
 
       # ======================================================
 
-
+      # ATTENTION: You should check for secrets in a git-pre-commit hook!
+      # Just as a reminder we have it here in the workflow...
       - name: Create empty ".truffleignore" in case it doesn't exist
         run: touch .truffleignore
 

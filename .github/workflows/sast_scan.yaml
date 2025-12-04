@@ -78,16 +78,6 @@ jobs:
           SPOTBUGS-VERSION: '4.9.8'
           FINDSECBUGS-VERSION: '1.14.0'
 
-#      - name: Download SpotBugs CLI + FindSecBugs Rule Pack
-#        run: |
-#          wget -O spotbugs.tgz https://github.com/spotbugs/spotbugs/releases/download/4.9.3/spotbugs-4.9.3.tgz
-#          tar -xzf spotbugs.tgz
-#          mv spotbugs-*/ spotbugs/
-#
-#          # VORSICHT: hier sollte man noch auf einen Hash prüfen!!!
-#          wget -O findsecbugs.jar https://search.maven.org/remotecontent?filepath=com/h3xstream/findsecbugs/findsecbugs-plugin/1.12.0/findsecbugs-plugin-1.12.0.jar
-#          mv findsecbugs.jar spotbugs/plugin/.
-
       - name: Run SpotBugs CLI (SARIF)
         run: |
           spotbugs/bin/spotbugs -sarif:/tmp/raw-spotbugs-output.txt -effort:max -low -auxclasspath lib:target/classes target/classes > /tmp/raw-spotbugs-output.txt

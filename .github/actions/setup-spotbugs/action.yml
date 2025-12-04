@@ -1,0 +1,119 @@
+name: 'Setup SpotBugs'
+description: 'Downloads, verifies, and installs SpotBugs with FindSecBugs plugin'
+author: 'Your Name'
+
+inputs:
+  SPOTBUGS-VERSION:
+    description: 'SpotBugs version to install'
+    required: false
+    default: '4.9.8'
+  FINDSECBUGS-VERSION:
+    description: 'FindSecBugs plugin version'
+    required: false
+    default: '1.14.0'
+  SPOTBUGS-SHA256:
+    description: 'Expected SHA256 hash for SpotBugs'
+    required: true
+  FINDSECBUGS-SHA256:
+    description: 'Expected SHA256 hash for FindSecBugs'
+    required: true
+  INSTALL-DIR:
+    description: 'Installation directory'
+    required: false
+    default: 'spotbugs'
+  CACHE-ENABLED:
+    description: 'Enable caching'
+    required: false
+    default: 'true'
+
+outputs:
+  installation-path:
+    description: 'Path to SpotBugs installation'
+    value: ${{ steps.install.outputs.path }}
+  cache-hit:
+    description: 'Whether cache was hit'
+    value: ${{ steps.spotbugs_cache.outputs.cache-hit }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache SpotBugs
+      if: inputs.CACHE-ENABLED == 'true'
+      id: spotbugs_cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.INSTALL-DIR }}
+        key: spotbugs-${{ inputs.SPOTBUGS-VERSION }}-findsecbugs-${{ inputs.FINDSECBUGS-VERSION }}
+
+    - name: Install SpotBugs & FindSecBugs
+      id: install
+      if: steps.spotbugs_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        
+        readonly SPOTBUGS_VERSION="${{ inputs.SPOTBUGS-VERSION }}"
+        readonly FINDSECBUGS_VERSION="${{ inputs.FINDSECBUGS-VERSION }}"
+        readonly SPOTBUGS_SHA256="${{ inputs.SPOTBUGS-SHA256 }}"
+        readonly FINDSECBUGS_SHA256="${{ inputs.FINDSECBUGS-SHA256 }}"
+        readonly INSTALL_DIR="${{ inputs.INSTALL-DIR }}"
+        
+        readonly SPOTBUGS_URL="https://github.com/spotbugs/spotbugs/releases/download/${SPOTBUGS_VERSION}/spotbugs-${SPOTBUGS_VERSION}.tgz"
+        readonly FINDSECBUGS_URL="https://search.maven.org/remotecontent?filepath=com/h3xstream/findsecbugs/findsecbugs-plugin/${FINDSECBUGS_VERSION}/findsecbugs-plugin-${FINDSECBUGS_VERSION}.jar"
+        
+        verify_hash() {
+            local file="$1" expected="$2" desc="$3"
+            echo "::group::🔍 Verifiziere ${desc}"
+            local actual=$(sha256sum "${file}" | awk '{print $1}')
+            if [[ "${actual}" != "${expected}" ]]; then
+                echo "::error::Hash mismatch: ${desc}"
+                echo "Expected: ${expected}"
+                echo "Actual: ${actual}"
+                echo "::endgroup::"
+                exit 1
+            fi
+            echo "::notice::✅ Hash verified: ${desc}"
+            echo "::endgroup::"
+        }
+        
+        download_with_retry() {
+            local url="$1" output="$2" desc="$3"
+            echo "::group::📥 Download ${desc}"
+            echo "::group::📥 Url: ${url}"
+            for i in {1..3}; do
+                wget -q --show-progress --timeout=30 -O "${output}" "${url}" && {
+                    echo "::endgroup::"
+                    return 0
+                }
+                [[ $i -lt 3 ]] && echo "::warning::Retry $i/3" && sleep 2
+            done
+            echo "::error::Download failed: ${desc}"
+            echo "::endgroup::"
+            exit 1
+        }
+        
+        TEMP_DIR=$(mktemp -d)
+        trap "rm -rf ${TEMP_DIR}" EXIT
+        
+        cd "${TEMP_DIR}"
+        
+        download_with_retry "${SPOTBUGS_URL}" "spotbugs.tgz" "SpotBugs"
+        verify_hash "spotbugs.tgz" "${SPOTBUGS_SHA256}" "SpotBugs"
+        
+        tar -xzf spotbugs.tgz
+        mv spotbugs-*/ "${INSTALL_DIR}/"
+        
+        download_with_retry "${FINDSECBUGS_URL}" "findsecbugs.jar" "FindSecBugs"
+        verify_hash "findsecbugs.jar" "${FINDSECBUGS_SHA256}" "FindSecBugs"
+        
+        mkdir -p "${INSTALL_DIR}/plugin"
+        mv findsecbugs.jar "${INSTALL_DIR}/plugin/"
+        
+        mv "${INSTALL_DIR}" "${GITHUB_WORKSPACE}/"
+        
+        echo "path=${GITHUB_WORKSPACE}/${INSTALL_DIR}" >> $GITHUB_OUTPUT
+        echo "::notice::✅ Installation complete"
+
+    - name: Add to PATH
+      shell: bash
+      run: echo "${{ github.workspace }}/${{ inputs.INSTALL-DIR }}/bin" >> $GITHUB_PATH

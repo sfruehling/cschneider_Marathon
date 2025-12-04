@@ -70,17 +70,23 @@ jobs:
 
       # ======================================================
 
+      - name: Setup SpotBugs
+        uses: ./.github/actions/setup-spotbugs
+        with:
+          SPOTBUGS-SHA256: '2eb8e0f2b223c22ffa2ce0c1cf1be4127dde19d240b8f7ce69a5fd3ad5c36ff3'
+          FINDSECBUGS-SHA256: '6fa340344fa433ff46c2985dab1010e8bc739f9395c983594a5240095e92abc8'
+          SPOTBUGS-VERSION: '4.9.8'
+          FINDSECBUGS-VERSION: '1.14.0'
 
-
-      - name: Download SpotBugs CLI + FindSecBugs Rule Pack
-        run: |
-          wget -O spotbugs.tgz https://github.com/spotbugs/spotbugs/releases/download/4.9.3/spotbugs-4.9.3.tgz
-          tar -xzf spotbugs.tgz
-          mv spotbugs-*/ spotbugs/
-          
-          # VORSICHT: hier sollte man noch auf einen Hash prüfen!!!
-          wget -O findsecbugs.jar https://search.maven.org/remotecontent?filepath=com/h3xstream/findsecbugs/findsecbugs-plugin/1.12.0/findsecbugs-plugin-1.12.0.jar
-          mv findsecbugs.jar spotbugs/plugin/.
+#      - name: Download SpotBugs CLI + FindSecBugs Rule Pack
+#        run: |
+#          wget -O spotbugs.tgz https://github.com/spotbugs/spotbugs/releases/download/4.9.3/spotbugs-4.9.3.tgz
+#          tar -xzf spotbugs.tgz
+#          mv spotbugs-*/ spotbugs/
+#
+#          # VORSICHT: hier sollte man noch auf einen Hash prüfen!!!
+#          wget -O findsecbugs.jar https://search.maven.org/remotecontent?filepath=com/h3xstream/findsecbugs/findsecbugs-plugin/1.12.0/findsecbugs-plugin-1.12.0.jar
+#          mv findsecbugs.jar spotbugs/plugin/.
 
       - name: Run SpotBugs CLI (SARIF)
         run: |
